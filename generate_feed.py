@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 import xml.etree.ElementTree as ET
+import json
 
 # FT terrorism section
 url = "https://www.ft.com/terrorism"
@@ -20,7 +21,7 @@ ET.SubElement(channel, 'link').text = url
 ET.SubElement(channel, 'description').text = "Latest news on terrorism from the Financial Times"
 ET.SubElement(channel, 'lastBuildDate').text = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-# Extract articles
+# Extract terrorism-specific articles
 articles_found = 0
 seen_titles = set()
 
@@ -32,36 +33,38 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
         continue
 
     seen_titles.add(title)
-    full_url = "https://www.ft.com" + href
+    full_url = "https://www.ft.com/terrorism" + href
 
-    # Attempt to get actual publication date from the article
+    # Extract actual publication date using LD+JSON metadata
+    pub_date = datetime.datetime.utcnow()  # fallback
     try:
         article_resp = requests.get(full_url, headers=headers)
         article_resp.raise_for_status()
         article_soup = BeautifulSoup(article_resp.text, "html.parser")
 
-        meta_tag = article_soup.find("meta", attrs={"property": "article:published_time"})
-        if meta_tag and meta_tag.get("content"):
-            pub_date_iso = meta_tag["content"].rstrip("Z")
-            pub_date = datetime.datetime.fromisoformat(pub_date_iso)
-            pub_date_str = pub_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        else:
-            pub_date_str = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+        json_ld_tag = article_soup.find("script", type="application/ld+json")
+        if json_ld_tag:
+            json_ld = json.loads(json_ld_tag.string)
+            if isinstance(json_ld, list):
+                json_ld = json_ld[0]
+            date_str = json_ld.get("datePublished")
+            if date_str:
+                pub_date = datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+
     except Exception as e:
-        print(f"⚠️ Failed to fetch pubDate for {full_url}: {e}")
-        pub_date_str = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+        print(f"⚠️ Failed to extract pubDate for '{title}': {e}")
 
     item = ET.SubElement(channel, "item")
     ET.SubElement(item, "title").text = title
     ET.SubElement(item, "link").text = full_url
     ET.SubElement(item, "description").text = f"FT article on terrorism: {title}"
-    ET.SubElement(item, "pubDate").text = pub_date_str
+    ET.SubElement(item, "pubDate").text = pub_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
     articles_found += 1
     if articles_found >= 10:
         break
 
-# Write output to terrorism.xml
+# Write output
 with open("terrorism.xml", "wb") as f:
     ET.ElementTree(rss).write(f, encoding="utf-8", xml_declaration=True)
 
