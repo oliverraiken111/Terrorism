@@ -21,7 +21,7 @@ ET.SubElement(channel, 'link').text = url
 ET.SubElement(channel, 'description').text = "Latest news on terrorism from the Financial Times"
 ET.SubElement(channel, 'lastBuildDate').text = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-# Extract terrorism-specific articles
+# Find article teasers
 articles_found = 0
 seen_titles = set()
 
@@ -33,10 +33,12 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
         continue
 
     seen_titles.add(title)
-    full_url = "https://www.ft.com/terrorism" + href
+    full_url = "https://www.ft.com" + href
 
-    # Extract actual publication date using LD+JSON metadata
-    pub_date = datetime.datetime.utcnow()  # fallback
+    # Default fallback to current time
+    pub_date = datetime.datetime.utcnow()
+
+    # Try to extract pubDate from JSON-LD
     try:
         article_resp = requests.get(full_url, headers=headers)
         article_resp.raise_for_status()
@@ -44,15 +46,17 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
 
         json_ld_tag = article_soup.find("script", type="application/ld+json")
         if json_ld_tag:
-            json_ld = json.loads(json_ld_tag.string)
-            if isinstance(json_ld, list):
-                json_ld = json_ld[0]
-            date_str = json_ld.get("datePublished")
+            json_data = json.loads(json_ld_tag.string.strip())
+
+            # Support both list or dict format
+            if isinstance(json_data, list):
+                json_data = json_data[0]
+
+            date_str = json_data.get("datePublished")
             if date_str:
                 pub_date = datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-
     except Exception as e:
-        print(f"⚠️ Failed to extract pubDate for '{title}': {e}")
+        print(f"⚠️ Could not fetch pubDate for {full_url}: {e}")
 
     item = ET.SubElement(channel, "item")
     ET.SubElement(item, "title").text = title
@@ -64,7 +68,7 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
     if articles_found >= 10:
         break
 
-# Write output
+# Write to XML
 with open("terrorism.xml", "wb") as f:
     ET.ElementTree(rss).write(f, encoding="utf-8", xml_declaration=True)
 
