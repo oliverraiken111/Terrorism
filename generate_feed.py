@@ -3,8 +3,8 @@ from bs4 import BeautifulSoup
 import datetime
 import xml.etree.ElementTree as ET
 
-# FT Syria section
-url = "https://www.ft.com/syria"
+# FT terrorism section
+url = "https://www.ft.com/terrorism"
 headers = {"User-Agent": "Mozilla/5.0"}
 
 response = requests.get(url, headers=headers)
@@ -15,12 +15,12 @@ soup = BeautifulSoup(response.text, "html.parser")
 ET.register_namespace('media', 'http://search.yahoo.com/mrss/')
 rss = ET.Element('rss', {"version": "2.0", "xmlns:media": "http://search.yahoo.com/mrss/"})
 channel = ET.SubElement(rss, 'channel')
-ET.SubElement(channel, 'title').text = "FT.com Syria News"
+ET.SubElement(channel, 'title').text = "FT.com terrorism News"
 ET.SubElement(channel, 'link').text = url
-ET.SubElement(channel, 'description').text = "Latest news on Syria from the Financial Times"
+ET.SubElement(channel, 'description').text = "Latest news on terrorism from the Financial Times"
 ET.SubElement(channel, 'lastBuildDate').text = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-# Extract Syria-specific articles
+# Extract terrorism-specific articles
 articles_found = 0
 seen_titles = set()
 
@@ -56,7 +56,7 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
     item = ET.SubElement(channel, "item")
     ET.SubElement(item, "title").text = title
     ET.SubElement(item, "link").text = full_url
-    ET.SubElement(item, "description").text = f"FT article on Syria: {title}"
+    ET.SubElement(item, "description").text = f"FT article on terrorism: {title}"
     ET.SubElement(item, "pubDate").text = pub_date_str
 
     articles_found += 1
@@ -64,7 +64,7 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
         break
 
 # Write output
-with open("syria_fixed.xml", "wb") as f:
+with open("terrorism_fixed.xml", "wb") as f:
     ET.ElementTree(rss).write(f, encoding="utf-8", xml_declaration=True)
 
-print(f"✅ RSS feed created with {articles_found} Syria-specific articles.")
+print(f"✅ RSS feed created with {articles_found} terrorism-specific articles.")
