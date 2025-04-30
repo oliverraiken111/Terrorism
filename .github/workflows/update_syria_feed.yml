@@ -35,7 +35,7 @@ jobs:
 
       - name: Commit and push updated RSS feed
         run: |
-          git add syria_fixed.xml
+          git add terrorism.xml
           git commit -m "Auto-update terrorism RSS feed" || echo "No changes to commit"
           git pull origin main --rebase
           git push origin main
