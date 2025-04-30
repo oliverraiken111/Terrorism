@@ -25,15 +25,15 @@ jobs:
         run: |
           pip install requests beautifulsoup4
 
-      - name: Run the RSS generation script
-        run: python generate_feed.py
+      - name: Run the terrorism RSS generation script
+        run: python generate_terrorism_feed.py
 
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push updated RSS feed
+      - name: Commit and push updated terrorism RSS feed
         run: |
           git add terrorism.xml
           git commit -m "Auto-update terrorism RSS feed" || echo "No changes to commit"
