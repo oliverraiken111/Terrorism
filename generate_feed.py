@@ -15,12 +15,12 @@ soup = BeautifulSoup(response.text, "html.parser")
 ET.register_namespace('media', 'http://search.yahoo.com/mrss/')
 rss = ET.Element('rss', {"version": "2.0", "xmlns:media": "http://search.yahoo.com/mrss/"})
 channel = ET.SubElement(rss, 'channel')
-ET.SubElement(channel, 'title').text = "FT.com terrorism News"
+ET.SubElement(channel, 'title').text = "FT.com Terrorism News"
 ET.SubElement(channel, 'link').text = url
 ET.SubElement(channel, 'description').text = "Latest news on terrorism from the Financial Times"
 ET.SubElement(channel, 'lastBuildDate').text = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-# Extract terrorism-specific articles
+# Extract articles
 articles_found = 0
 seen_titles = set()
 
@@ -34,21 +34,19 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
     seen_titles.add(title)
     full_url = "https://www.ft.com" + href
 
-    # Try to get actual pubDate from the article page
+    # Attempt to get actual publication date from the article
     try:
         article_resp = requests.get(full_url, headers=headers)
         article_resp.raise_for_status()
         article_soup = BeautifulSoup(article_resp.text, "html.parser")
 
-        # FT meta tag for published time
         meta_tag = article_soup.find("meta", attrs={"property": "article:published_time"})
         if meta_tag and meta_tag.get("content"):
-            pub_date_iso = meta_tag["content"]
-            pub_date = datetime.datetime.fromisoformat(pub_date_iso.rstrip("Z"))
+            pub_date_iso = meta_tag["content"].rstrip("Z")
+            pub_date = datetime.datetime.fromisoformat(pub_date_iso)
             pub_date_str = pub_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
         else:
             pub_date_str = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
-
     except Exception as e:
         print(f"⚠️ Failed to fetch pubDate for {full_url}: {e}")
         pub_date_str = datetime.datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -63,7 +61,7 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
     if articles_found >= 10:
         break
 
-# Write output
+# Write output to terrorism.xml
 with open("terrorism.xml", "wb") as f:
     ET.ElementTree(rss).write(f, encoding="utf-8", xml_declaration=True)
 
