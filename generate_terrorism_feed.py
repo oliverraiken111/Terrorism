@@ -64,7 +64,7 @@ for teaser in soup.select('a.js-teaser-heading-link[href^="/content/"]'):
         break
 
 # Write output
-with open("terrorism_fixed.xml", "wb") as f:
+with open("terrorism.xml", "wb") as f:
     ET.ElementTree(rss).write(f, encoding="utf-8", xml_declaration=True)
 
 print(f"✅ RSS feed created with {articles_found} terrorism-specific articles.")
